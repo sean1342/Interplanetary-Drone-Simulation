@@ -1,30 +1,32 @@
 import numpy as np
-import math
 
+# astronomical unit, gravitational constant
+AU = 1.496e+11
 G = 6.67408e-11
 
-def step(dt, bodies):
+def step(bodies, timestep):
     for b1 in bodies:
+        total_fx = 0
+        total_fy = 0
         for b2 in bodies:
             if b1 != b2:
+                # calculate distance
                 dx = b2.position[0] - b1.position[0]
                 dy = b2.position[1] - b1.position[1]
-                distance = math.sqrt(dx * dx + dy * dy)
+                d = np.sqrt(dx**2 + dy**2)
 
-                # calculate force between bodies
-                force = G * b1.mass * b2.mass / (distance**2)
+                # calculate force
+                f = G * b1.mass * b2.mass / d ** 2
+                theta = np.arctan2(dy, dx)
+                fx = np.cos(theta) * f
+                fy = np.sin(theta) * f
 
-                # calculate x and y components of force
-                fx = force * dx / distance
-                fy = force * dy / distance
+                # update velocity with force from each other body
+                total_fx += fx
+                total_fy += fy
 
-                # apply forces to bodies
-                b1.velocity[0] += fx
-                b1.velocity[1] += fy
-                b2.velocity[0] -= fx
-                b2.velocity[1] -= fy
+        b1.velocity[0] += total_fx / b1.mass * timestep
+        b1.velocity[1] += total_fy / b1.mass * timestep
 
-                b1.position[0] += b1.velocity[0] * dt
-                b1.position[1] += b1.velocity[1] * dt
-                b2.position[0] += b2.velocity[0] * dt
-                b2.position[1] += b2.velocity[1] * dt
+        b1.position[0] += b1.velocity[0] * timestep
+        b1.position[1] += b1.velocity[1] * timestep
