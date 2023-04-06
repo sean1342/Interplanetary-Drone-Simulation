@@ -15,13 +15,16 @@ class Sim:
         self.sun_mass = sun_mass
 
         self.bodies = []
+        # self.bodies.append(Body(1000, [0, 0], [100, 100]))
+        # self.bodies.append(Body(1000, [0, 0], [200, 230]))
+
         for i in range(n_planets):
-            self.bodies.append(Body(np.random.uniform(0, avg_mass * 2), (0, 0), (200, 200)))
+            self.bodies.append(Body(np.random.uniform(0, avg_mass * 2), [0, 0], [np.random.random() * self.SIZE[0], np.random.random() * self.SIZE[0]]))
     
     def init(self):
         pygame.init()
 
-        self.WIN = pygame.display.set_mode()
+        self.WIN = pygame.display.set_mode(self.SIZE)
         pygame.display.set_caption("Simulation")
 
         self.clock = pygame.time.Clock()
@@ -34,14 +37,16 @@ class Sim:
 
         for body in self.bodies:
             pygame.draw.circle(self.WIN, (255,255,255), body.position, np.sqrt(body.mass/np.pi))
+            # print(body.position[0], body.position[1])
 
         pygame.display.update()
 
-sim = Sim(100, 2, 10)
+sim = Sim(1000, 2, 100)
+sim.init()
 
 running = True
 while running:
     for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
+        if event.type == pygame.QUIT:
+            run = False
     sim.step()

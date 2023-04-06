@@ -1,31 +1,30 @@
 import numpy as np
+import math
 
 G = 6.67408e-11
 
 def step(dt, bodies):
-    for i, b1 in enumerate(bodies):
-        for j, b2 in enumerate(bodies):
-            if i != j:
+    for b1 in bodies:
+        for b2 in bodies:
+            if b1 != b2:
                 dx = b2.position[0] - b1.position[0]
                 dy = b2.position[1] - b1.position[1]
+                distance = math.sqrt(dx * dx + dy * dy)
 
-                r = np.sqrt(dx**2 + dy**2)
+                # calculate force between bodies
+                force = G * b1.mass * b2.mass / (distance**2)
 
-                F = G * bodies[j].mass * bodies[i].mass / r**2
+                # calculate x and y components of force
+                fx = force * dx / distance
+                fy = force * dy / distance
 
-                theta = np.arctan2(dy, dx)
+                # apply forces to bodies
+                b1.velocity[0] += fx
+                b1.velocity[1] += fy
+                b2.velocity[0] -= fx
+                b2.velocity[1] -= fy
 
-                Fx += np.cos(theta)*F
-                Fy += np.sin(theta)*F
-
-                ax = Fx / b1.mass
-                ay = Fy / b1.mass
-
-                bodies[i].velocity[1] += ax * dt
-                bodies[i].velocity[1] += ay * dt
-
-                sx = b1.velocity[0] * dt - 0.5 * ax * dt ** 2
-                sy = b1.velocity[1] * dt - 0.5 * ay * dt ** 2
-
-                bodies[i].velocity[0] += sx
-                bodies[i].velocity[1] += sy
+                b1.position[0] += b1.velocity[0] * dt
+                b1.position[1] += b1.velocity[1] * dt
+                b2.position[0] += b2.velocity[0] * dt
+                b2.position[1] += b2.velocity[1] * dt
