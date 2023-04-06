@@ -29,9 +29,8 @@ class Sim:
         self.clock = pygame.time.Clock()
 
         self.bodies = []
-        self.bodies.append(Body([0 * physics.AU, 0 * physics.AU], [0, 0], 5e+30, 2e11))
-        self.bodies.append(Body([10 * physics.AU, 0 * physics.AU], [0, 16000], 5e+24, 1e11))
-        self.bodies.append(Body([-10 * physics.AU, 0 * physics.AU], [0, -10000], 5e+24, 1e11))
+        self.bodies.append(Body([0 * physics.AU, 0 * physics.AU], [0, 0], 8e+30, 4.65247264e-3))
+        self.bodies.append(Body([-5 * physics.AU, 0 * physics.AU], [0, 29.783 * 1000], 5e+24, 4.25875e-5))
     
     def draw(self):
         self.WIN.fill((0,0,0))
@@ -42,7 +41,9 @@ class Sim:
             # change pygames weird coordinate system to standard
             x = body.position[0] * self.scale + self.SIZE[0] * 0.5 + self.offset[0]
             y = -body.position[1] * self.scale + self.SIZE[1] * 0.5 + self.offset[1]
-            pygame.draw.circle(self.WIN, (230,230,230), (x, y), body.radius * self.scale) # * self.scale)
+
+            # massive scaling factor so everything is visible
+            pygame.draw.circle(self.WIN, (230,230,230), (x, y), body.radius * self.scale * 10_000_000_000_000)
             if i == 0:
                 text = font.render("Sun", True, (255,255,255))
             else:
@@ -53,7 +54,6 @@ class Sim:
             self.WIN.blit(text, (x, y - body.radius * self.scale - text.get_height()))
 
         pygame.display.update()
-        print(self.scale)
 
     def step(self):
         self.clock.tick(60)
@@ -72,27 +72,18 @@ running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            run = False
-            pygame.quit()
+            running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
-                sim.timestep += 50000
+                sim.timestep *= 1.2
             if event.key == pygame.K_s:
-                sim.timestep -= 50000
+                sim.timestep *= 0.8
 
             if event.key == pygame.K_q:
                 sim.scale *= 2
             if event.key == pygame.K_a:
                 sim.scale *= 0.5
 
-            if event.key == pygame.K_LEFT:
-                sim.offset[0] -= 10
-            if event.key == pygame.K_RIGHT:
-                sim.offset[0] += 10
-            if event.key == pygame.K_UP:
-                sim.offset[1] -= 10
-            if event.key == pygame.K_DOWN:
-                sim.offset[1] += 10
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 clicking = True
@@ -108,8 +99,12 @@ while running:
         y_off = mouse_start_pos[1] - pygame.mouse.get_pos()[1]
         sim.offset[0] = -x_off
         sim.offset[1] = -y_off
+        # for body in sim.bodies:
+        #     body.position += (x_off,y_off)
 
-    # if np.round(sim.time, 0) % 50 == 0:
-    #     print(f"{np.round(sim.time, 0)} Days")
+    if np.round(sim.time, 0) % 50 == 0:
+        print(f"{np.round(sim.time, 0)} Days")
     sim.step()
     sim.draw()
+
+pygame.quit()
