@@ -1,19 +1,23 @@
 import pygame
 import physics
+import numpy as np
 
 class Rocket:
-    def __init__(self, position, velocity, rotation):
-        self.position = position
+    def __init__(self, position, velocity):
+        self.position = [position[0] * physics.AU, position[1] * physics.AU]
         self.velocity = velocity
-        self.rotation = rotation
-        self.mass = 5e6
-        self.height = 3.3423e+30
-        self.width = 6.0161e+31
+        # in radians
+        self.angle = 1.571
+        self.mass = 4989516.07
+        self.height = 3.3423e-10
+        self.width = 6.0161e-11
 
 class Body:
-    def __init__(self, position, velocity, mass, radius):
-        self.position = position
+    def __init__(self, position, velocity, mass, radius, sun):
+        self.sun = sun
+        self.position = [position[0] * physics.AU, position[1] * physics.AU]
         self.velocity = velocity
+        # in kg
         self.mass = mass
         self.radius = radius
 
@@ -22,8 +26,12 @@ class Sim:
         pygame.init()
 
         self.SIZE = SIZE
-        self.scale = 1 / physics.AU * 8 # approx 1 AU per 0.4 pixels to start
-        self.timestep = 3600 * 24 # 1 day per frame to start
+        # approx 1 AU per 0.4 pixels to start
+        self.scale = 1 / physics.AU * 8
+        # 1 day per frame to start
+        self.timestep = 3600 * 24
+
+        self.render_constant = 1e12
 
         self.WIN = pygame.display.set_mode(self.SIZE)
         pygame.display.set_caption("Simulation")
@@ -38,12 +46,10 @@ class Sim:
 
         self.stepping = True
 
-        # rocket = Rocket([0, 0], [0, 0], 0)
-
         self.bodies = []
-        self.bodies.append(Body([0 * physics.AU, 0 * physics.AU], [0, 0], 8e+30, 4.65247264e-3))
-        self.bodies.append(Body([-5 * physics.AU, 0 * physics.AU], [0, 29.783 * 1000], 5e+24, 4.25875e-5))
-        # self.bodies.append(rocket)
+        self.bodies.append(Body([0, 0], [0, 0], 5e+24, 5e-5, False))
+        rocket = Rocket([-2, 0], [0, 0])
+        self.bodies.append(rocket)
     
     def draw(self):
         self.WIN.fill((0,0,0))
@@ -55,22 +61,42 @@ class Sim:
             x = body.position[0] * self.scale + self.SIZE[0] * 0.5
             y = -body.position[1] * self.scale + self.SIZE[1] * 0.5
 
-            # massive scaling factor so everything is visible
             if isinstance(body, Body):
-                pygame.draw.circle(self.WIN, (230,230,230), (x, y), body.radius * self.scale * 1e12)
-            elif isinstance(body, Rocket):
-                rect = pygame.rect.Rect(body.position[0] - body.width / 2, body.position[1] - body.height / 2, body.width, body.height)
-                pygame.draw.rect(self.WIN, (255,255,255), rect)
+                pygame.draw.circle(self.WIN, (230,230,230), (x, y), body.radius * self.scale * self.render_constant)
 
-            if isinstance(body, Body):
-                if i == 0:
+                if body.sun:
                     text = font.render("Sun", True, (255,255,255))
                 else:
                     text = font.render(f"Planet {i}", True, (255,255,255))
-                self.WIN.blit(text, (x - text.get_width() / 2, y - body.radius * self.scale * 1e12 - text.get_height()))
-            elif isinstance(body, Rocket):
+                self.WIN.blit(text, (x - text.get_width() * 0.5, y - body.radius * self.scale * self.render_constant - text.get_height()))
+
+            if isinstance(body, Rocket):
+                half_width = body.width * self.scale * self.render_constant
+                half_height = body.height * self.scale * self.render_constant
+                points = [(x - half_width, y + half_height),
+                          (x - half_width, y - half_height),
+                          (x + half_width, y - half_height),
+                          (x + half_width, y + half_height)]
+                rot_points = []
+                for point in points:
+                    s = np.sin(-body.angle + 1.571)
+                    c = np.cos(-body.angle + 1.571)
+
+                    px = point[0] - x
+                    py = point[1] - y
+
+                    rotx = px * c - py * s
+                    roty = px * s + py * c
+
+                    px = rotx + x
+                    py = roty + y
+
+                    rot_points.append((px, py))
+
+                pygame.draw.polygon(self.WIN, (255,255,255), rot_points)
+
                 text = font.render("Rocket", True, (255,255,255))
-                self.WIN.blit(text, (x, y - 10))
+                self.WIN.blit(text, (x - text.get_width() * 0.5, y - body.height * self.scale * self.render_constant - text.get_height()))
 
         pygame.display.update()
 
@@ -89,6 +115,8 @@ mouse_start_pos = [0,0]
 clicking = False
 x_off, y_off = 0,0
 
+tracking = False
+
 running = True
 while running:
     for event in pygame.event.get():
@@ -106,6 +134,11 @@ while running:
                 else:
                     sim.stepping = True
 
+            if event.key == pygame.K_w:
+                sim.timestep *= 1.2
+            if event.key == pygame.K_s:
+                sim.timestep *= 0.8
+
             if event.key == pygame.K_q:
                 sim.scale *= 2
             if event.key == pygame.K_a:
@@ -116,7 +149,15 @@ while running:
             mouse_start_pos = pygame.mouse.get_pos()
         if event.type == pygame.MOUSEBUTTONUP:
             clicking = False
-        
+
+    if (pygame.key.get_pressed()[pygame.K_UP]):
+        sim.bodies[1].velocity[1] += 0.00000001 * sim.timestep * np.cos(-sim.bodies[1].angle + 1.571)
+        sim.bodies[1].velocity[0] += 0.00000001 * sim.timestep * np.sin(-sim.bodies[1].angle + 1.571)
+    if (pygame.key.get_pressed()[pygame.K_RIGHT]):
+        sim.bodies[1].angle -= 0.00004 * sim.timestep
+    if (pygame.key.get_pressed()[pygame.K_LEFT]):
+        sim.bodies[1].angle += 0.00004 * sim.timestep
+
     if clicking:
         x_off = (mouse_start_pos[0] - pygame.mouse.get_pos()[0]) / sim.scale
         y_off = (mouse_start_pos[1] - pygame.mouse.get_pos()[1]) / sim.scale
@@ -127,7 +168,6 @@ while running:
         
         mouse_start_pos = pygame.mouse.get_pos()
 
-    print(f"{sim.time} Seconds")
     sim.step()
     sim.draw()
 
